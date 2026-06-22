@@ -1,0 +1,52 @@
+// =====================================================================
+// FIRESTORE SECURITY RULES — Rooty
+// =====================================================================
+// كيفية الاستخدام:
+// 1) اذهب إلى Firebase Console → Firestore Database → تبويب "Rules"
+// 2) احذف المحتوى الموجود واستبدله بالكامل بهذا الكود
+// 3) اضغط "Publish"
+// =====================================================================
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ----------------------------------------------------------------
+    // COLLECTION: drivers (بيانات أصحاب الشاحنات)
+    // ----------------------------------------------------------------
+    match /drivers/{driverId} {
+      // القراءة: أي شخص يمكنه قراءة بروفيلات السائقين (مثلاً لعرض اسمه عند قبول طلب)
+      allow read: if true;
+
+      // الإنشاء: فقط أثناء التسجيل، ويجب أن يطابق uid الحساب الجديد في Authentication
+      // (driverId يجب أن يكون نفس uid الذي أنشأه Firebase Auth)
+      allow create: if request.auth != null && request.auth.uid == driverId;
+
+      // التعديل والحذف: فقط السائق نفسه يمكنه تعديل أو حذف بروفايله
+      allow update, delete: if request.auth != null && request.auth.uid == driverId;
+    }
+
+    // ----------------------------------------------------------------
+    // COLLECTION: requests (طلبات النقل)
+    // ----------------------------------------------------------------
+    match /requests/{requestId} {
+      // القراءة: مفتوحة لأي زائر (الزبون يحتاج رؤية حالة طلبه، والسائقون يحتاجون رؤية الطلبات)
+      allow read: if true;
+
+      // الإنشاء: مفتوح للجميع (الزبون ليس مسجلاً، لذا لا نطلب auth هنا)
+      // لكن نتحقق أن الحقول الأساسية موجودة لمنع إدخال بيانات فاسدة
+      allow create: if request.resource.data.client is string
+                    && request.resource.data.tel is string
+                    && request.resource.data.depart is string
+                    && request.resource.data.arrivee is string
+                    && request.resource.data.status == "pending";
+
+      // التحديث: فقط سائق مسجّل (متصل) يمكنه تغيير حالة الطلب (قبول/رفض)
+      allow update: if request.auth != null;
+
+      // الحذف: غير مسموح به حالياً (نحتفظ بالسجل التاريخي للطلبات)
+      allow delete: if false;
+    }
+  }
+}

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Faire une demande – Rooty</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+  <!-- FIREBASE SDK (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="../index.html" class="logo">
+        <span class="logo-icon"><i class="fas fa-truck"></i></span>
+        <span class="logo-text">Rooty</span>
+      </a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="../index.html">Accueil</a></li>
+        <li><a href="demande.html" class="active">Faire une demande</a></li>
+        <li><a href="inscription.html">Inscrire mon camion</a></li>
+        <li><a href="connexion.html" class="btn-nav">Connexion</a></li>
+      </ul>
+      <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+
+  <div class="page-hero">
+    <p class="section-label" style="justify-content:center;">Transport de marchandises</p>
+    <h1>Faites une demande de transport</h1>
+    <p>Remplissez le formulaire ci-dessous. Un chauffeur disponible vous contactera rapidement.</p>
+  </div>
+
+  <div class="form-section">
+    <div class="form-card">
+      <h2 class="form-title">Nouvelle demande</h2>
+      <p class="form-sub">Tous les champs marqués * sont obligatoires.</p>
+
+      <div id="step1">
+        <!-- INFORMATIONS CLIENT -->
+        <p style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--blue-500);margin-bottom:18px;">
+          <i class="fas fa-user"></i> &nbsp;Vos informations
+        </p>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Prénom *</label>
+            <input type="text" id="clientPrenom" placeholder="ex: Mohamed" required />
+          </div>
+          <div class="form-group">
+            <label>Nom *</label>
+            <input type="text" id="clientNom" placeholder="ex: Benali" required />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Téléphone *</label>
+            <div class="input-icon-wrap">
+              <i class="fas fa-phone"></i>
+              <input type="tel" id="clientTel" placeholder="+213 5XX XXX XXX" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <div class="input-icon-wrap">
+              <i class="fas fa-envelope"></i>
+              <input type="email" id="clientEmail" placeholder="votre@email.com" />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-divider"><span>Détails du trajet</span></div>
+
+        <!-- TRAJET -->
+        <p style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--blue-500);margin-bottom:18px;">
+          <i class="fas fa-route"></i> &nbsp;Trajet
+        </p>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Ville de départ *</label>
+            <div class="input-icon-wrap">
+              <i class="fas fa-map-marker-alt" style="color:#3B82F6;"></i>
+              <input type="text" id="villeDepart" placeholder="ex: Alger" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Ville d'arrivée *</label>
+            <div class="input-icon-wrap">
+              <i class="fas fa-map-marker-alt" style="color:#EF4444;"></i>
+              <input type="text" id="villeArrivee" placeholder="ex: Oran" required />
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Date souhaitée *</label>
+            <input type="date" id="dateTransport" required />
+          </div>
+          <div class="form-group">
+            <label>Heure préférentielle</label>
+            <input type="time" id="heureTransport" />
+          </div>
+        </div>
+
+        <div class="form-divider"><span>Marchandise</span></div>
+
+        <!-- MARCHANDISE -->
+        <p style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--blue-500);margin-bottom:18px;">
+          <i class="fas fa-boxes"></i> &nbsp;Marchandise
+        </p>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Type de marchandise *</label>
+            <select id="typeMarchandise" required>
+              <option value="">Sélectionner...</option>
+              <option>Matériaux de construction</option>
+              <option>Électroménager / Mobilier</option>
+              <option>Produits alimentaires</option>
+              <option>Produits agricoles</option>
+              <option>Véhicules / Engins</option>
+              <option>Marchandises diverses</option>
+              <option>Autre</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Poids estimé (tonnes)</label>
+            <input type="number" id="poids" min="0.1" max="40" step="0.5" placeholder="ex: 5" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Description complémentaire</label>
+          <textarea id="description" placeholder="Précisez toute information utile pour le chauffeur (dimensions, fragilité, accès, etc.)"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Type de camion requis</label>
+          <select id="typeCamion">
+            <option value="">Indifférent</option>
+            <option>Camion 5 tonnes</option>
+            <option>Camion 10 tonnes</option>
+            <option>Camion 20 tonnes</option>
+            <option>Semi-remorque</option>
+            <option>Camion frigorifique</option>
+            <option>Benne basculante</option>
+          </select>
+        </div>
+
+        <button class="btn-primary" id="submitBtn" style="width:100%;justify-content:center;margin-top:12px;" onclick="soumettredemande()">
+          <i class="fas fa-paper-plane"></i> <span id="submitBtnText">Soumettre la demande</span>
+        </button>
+      </div>
+
+      <!-- SUCCESS STATE -->
+      <div id="successState" style="display:none;text-align:center;padding:32px 0;">
+        <div style="width:72px;height:72px;background:#D1FAE5;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:2rem;color:#059669;">
+          <i class="fas fa-check"></i>
+        </div>
+        <h3 style="font-family:'Poppins',sans-serif;font-size:1.3rem;font-weight:700;margin-bottom:10px;">Demande envoyée !</h3>
+        <p style="color:var(--gray-600);margin-bottom:8px;">Votre demande a été transmise aux chauffeurs disponibles sur votre trajet.</p>
+        <p id="refNum" style="font-size:.85rem;color:var(--blue-500);font-weight:600;margin-bottom:28px;"></p>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+          <button class="btn-primary" onclick="nouvelledemande()"><i class="fas fa-plus"></i> Nouvelle demande</button>
+          <a href="../index.html" class="btn-secondary">Retour à l'accueil</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <a href="../index.html" class="logo" style="color:white;"><span class="logo-icon"><i class="fas fa-truck"></i></span><span class="logo-text">Rooty</span></a>
+        <p>La plateforme algérienne de mise en relation pour le transport de marchandises.</p>
+      </div>
+      <div class="footer-links"><h5>Navigation</h5><ul><li><a href="../index.html">Accueil</a></li><li><a href="demande.html">Faire une demande</a></li><li><a href="inscription.html">Inscrire mon camion</a></li></ul></div>
+      <div class="footer-links"><h5>Contact</h5><ul><li><i class="fas fa-envelope"></i> contact@rooty.dz</li><li><i class="fas fa-phone"></i> +213 550 000 000</li></ul></div>
+    </div>
+    <div class="footer-bottom"><p>© 2025 Rooty. Tous droits réservés.</p></div>
+  </footer>
+
+  <script src="../js/firebase-config.js"></script>
+  <script src="../js/requests.js"></script>
+  <script src="../js/main.js"></script>
+  <script>
+    // Set min date to today
+    document.getElementById('dateTransport').min = new Date().toISOString().split('T')[0];
+
+    async function soumettredemande() {
+      const prenom  = document.getElementById('clientPrenom').value.trim();
+      const nom     = document.getElementById('clientNom').value.trim();
+      const tel     = document.getElementById('clientTel').value.trim();
+      const depart  = document.getElementById('villeDepart').value.trim();
+      const arrivee = document.getElementById('villeArrivee').value.trim();
+      const date    = document.getElementById('dateTransport').value;
+      const type    = document.getElementById('typeMarchandise').value;
+
+      if (!prenom || !nom || !tel || !depart || !arrivee || !date || !type) {
+        showToast('Veuillez remplir tous les champs obligatoires.', 'error'); return;
+      }
+
+      const btn = document.getElementById('submitBtn');
+      const btnText = document.getElementById('submitBtnText');
+      btn.disabled = true;
+      btnText.textContent = 'Envoi en cours...';
+
+      const req = {
+        client: `${prenom} ${nom}`, tel,
+        email: document.getElementById('clientEmail').value,
+        depart, arrivee, date,
+        heure: document.getElementById('heureTransport').value,
+        typeMarchandise: type,
+        poids: document.getElementById('poids').value,
+        description: document.getElementById('description').value,
+        typeCamion: document.getElementById('typeCamion').value
+      };
+
+      try {
+        const requestId = await creerDemandeFirebase(req);
+        document.getElementById('step1').style.display = 'none';
+        document.getElementById('refNum').textContent = `Référence : ${requestId}`;
+        document.getElementById('successState').style.display = 'block';
+      } catch (error) {
+        console.error(error);
+        showToast('Une erreur est survenue. Veuillez réessayer.', 'error');
+        btn.disabled = false;
+        btnText.textContent = 'Soumettre la demande';
+      }
+    }
+
+    function nouvelledemande() {
+      document.getElementById('step1').style.display = 'block';
+      document.getElementById('successState').style.display = 'none';
+      document.querySelectorAll('input, select, textarea').forEach(el => el.value = '');
+      document.getElementById('dateTransport').min = new Date().toISOString().split('T')[0];
+      const btn = document.getElementById('submitBtn');
+      const btnText = document.getElementById('submitBtnText');
+      btn.disabled = false;
+      btnText.textContent = 'Soumettre la demande';
+    }
+  </script>
+</body>
+</html>

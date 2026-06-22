@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tableau de bord – Rooty</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+  <!-- FIREBASE SDK (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <style>
+    .dash-tabs { display:flex; gap:8px; margin-bottom:32px; flex-wrap:wrap; }
+    .dash-tab {
+      padding:10px 22px; border-radius:50px; font-size:.88rem; font-weight:600;
+      cursor:pointer; border:2px solid var(--blue-200); color:var(--gray-600);
+      background:var(--white); transition:all .2s;
+    }
+    .dash-tab.active { background:var(--blue-500); color:white; border-color:var(--blue-500); }
+    .empty-state { text-align:center; padding:64px 24px; color:var(--gray-400); }
+    .empty-state i { font-size:3rem; margin-bottom:16px; color:var(--blue-200); }
+    .empty-state p { font-size:.95rem; }
+    .stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:32px; }
+    .stat-box {
+      background:var(--white); border:1px solid var(--blue-100); border-radius:var(--radius);
+      padding:20px 18px; text-align:center;
+    }
+    .stat-box .num { font-family:'Poppins',sans-serif; font-size:1.8rem; font-weight:700; color:var(--blue-600); }
+    .stat-box .lbl { font-size:.78rem; color:var(--gray-400); margin-top:4px; }
+    .profile-edit-btn { margin-left:auto; }
+    .info-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:16px; }
+    .info-item { background:var(--blue-50); border-radius:10px; padding:12px 16px; }
+    .info-item label { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--blue-400); }
+    .info-item p { font-weight:600; color:var(--gray-800); margin-top:2px; }
+    @media(max-width:700px){ .stats-row{grid-template-columns:1fr 1fr;} .info-row{grid-template-columns:1fr;} }
+
+    #loadingOverlay {
+      position:fixed; inset:0; background:var(--white); z-index:9999;
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px;
+    }
+    #loadingOverlay i { font-size:2.2rem; color:var(--blue-500); animation: spin 1s linear infinite; }
+    #loadingOverlay p { color:var(--gray-600); font-size:.9rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <!-- Affiché tant que Firebase n'a pas confirmé l'état de connexion -->
+  <div id="loadingOverlay">
+    <i class="fas fa-spinner"></i>
+    <p>Vérification de la connexion...</p>
+  </div>
+
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="../index.html" class="logo">
+        <span class="logo-icon"><i class="fas fa-truck"></i></span>
+        <span class="logo-text">Rooty</span>
+      </a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="../index.html">Accueil</a></li>
+        <li><a href="demande.html">Nouvelles demandes</a></li>
+        <li id="driverName" style="font-weight:600;color:var(--blue-600);"></li>
+        <li><a href="#" onclick="seDeconnecter()" style="color:#EF4444;font-weight:600;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></li>
+      </ul>
+      <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+
+  <div class="page-hero" style="padding:48px 24px 40px;">
+    <p class="section-label" style="justify-content:center;"><i class="fas fa-tachometer-alt"></i>&nbsp;Espace chauffeur</p>
+    <h1>Tableau de bord</h1>
+    <p>Gérez vos demandes de transport et votre profil.</p>
+  </div>
+
+  <div class="dashboard">
+
+    <!-- PROFILE CARD -->
+    <div class="driver-profile-card" id="profileCard">
+      <div class="driver-avatar" id="driverAvatar">?</div>
+      <div class="driver-info" style="flex:1;">
+        <h2 id="fullName">Chargement...</h2>
+        <p id="driverType"><i class="fas fa-truck"></i> –</p>
+        <div class="driver-meta">
+          <span id="metaTel"><i class="fas fa-phone"></i> –</span>
+          <span id="metaWilaya"><i class="fas fa-map-marker-alt"></i> –</span>
+          <span id="metaEmail"><i class="fas fa-envelope"></i> –</span>
+        </div>
+      </div>
+      <button class="btn-outline profile-edit-btn" onclick="showTab('profil')">
+        <i class="fas fa-edit"></i> Mon profil
+      </button>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-row" id="statsRow">
+      <div class="stat-box"><div class="num" id="statTotal">0</div><div class="lbl">Demandes reçues</div></div>
+      <div class="stat-box"><div class="num" id="statAccepted" style="color:#059669;">0</div><div class="lbl">Acceptées</div></div>
+      <div class="stat-box"><div class="num" id="statRejected" style="color:#DC2626;">0</div><div class="lbl">Refusées</div></div>
+      <div class="stat-box"><div class="num" id="statPending" style="color:#D97706;">0</div><div class="lbl">En attente</div></div>
+    </div>
+
+    <!-- TABS -->
+    <div class="dash-tabs">
+      <div class="dash-tab active" id="tabPending"   onclick="showTab('pending')"><i class="fas fa-clock"></i> En attente</div>
+      <div class="dash-tab"        id="tabAccepted"  onclick="showTab('accepted')"><i class="fas fa-check-circle"></i> Acceptées</div>
+      <div class="dash-tab"        id="tabRejected"  onclick="showTab('rejected')"><i class="fas fa-times-circle"></i> Refusées</div>
+      <div class="dash-tab"        id="tabProfil"    onclick="showTab('profil')"><i class="fas fa-user"></i> Mon profil</div>
+    </div>
+
+    <!-- REQUESTS LIST -->
+    <div id="requestsList"></div>
+
+    <!-- PROFILE DETAIL -->
+    <div id="profilSection" style="display:none;">
+      <div style="background:var(--white);border:1px solid var(--blue-100);border-radius:var(--radius-lg);padding:36px;">
+        <h3 class="requests-title"><i class="fas fa-id-card"></i> Informations personnelles</h3>
+        <div class="info-row">
+          <div class="info-item"><label>Prénom</label><p id="pPrenom">–</p></div>
+          <div class="info-item"><label>Nom</label><p id="pNom">–</p></div>
+          <div class="info-item"><label>Téléphone</label><p id="pTel">–</p></div>
+          <div class="info-item"><label>Email</label><p id="pEmail">–</p></div>
+          <div class="info-item"><label>Wilaya</label><p id="pWilaya">–</p></div>
+          <div class="info-item"><label>N° Permis</label><p id="pPermis">–</p></div>
+        </div>
+        <h3 class="requests-title" style="margin-top:28px;"><i class="fas fa-truck"></i> Informations du camion</h3>
+        <div class="info-row">
+          <div class="info-item"><label>Marque</label><p id="pMarque">–</p></div>
+          <div class="info-item"><label>Modèle</label><p id="pModele">–</p></div>
+          <div class="info-item"><label>Type</label><p id="pType">–</p></div>
+          <div class="info-item"><label>Capacité</label><p id="pCapacite">–</p></div>
+          <div class="info-item"><label>Immatriculation</label><p id="pImmat">–</p></div>
+          <div class="info-item"><label>Année</label><p id="pAnnee">–</p></div>
+        </div>
+        <div style="margin-top:28px;">
+          <button class="btn-outline" onclick="seDeconnecter()" style="border-color:#EF4444;color:#EF4444;">
+            <i class="fas fa-sign-out-alt"></i> Se déconnecter
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <a href="../index.html" class="logo" style="color:white;"><span class="logo-icon"><i class="fas fa-truck"></i></span><span class="logo-text">Rooty</span></a>
+        <p>La plateforme algérienne de mise en relation pour le transport de marchandises.</p>
+      </div>
+      <div class="footer-links"><h5>Navigation</h5><ul><li><a href="../index.html">Accueil</a></li><li><a href="demande.html">Demandes</a></li></ul></div>
+      <div class="footer-links"><h5>Contact</h5><ul><li><i class="fas fa-envelope"></i> contact@rooty.dz</li></ul></div>
+    </div>
+    <div class="footer-bottom"><p>© 2025 Rooty. Tous droits réservés.</p></div>
+  </footer>
+
+  <script src="../js/firebase-config.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/requests.js"></script>
+  <script src="../js/main.js"></script>
+  <script>
+    let currentDriver = null;
+    let currentTab = 'pending';
+    let unsubscribeCurrentListener = null; // pour arrêter l'écoute Firestore précédente avant d'en démarrer une nouvelle
+
+    async function init() {
+      // requireAuth() attend la confirmation de Firebase (onAuthStateChanged) avant de continuer.
+      // Si aucun utilisateur n'est connecté, il redirige automatiquement vers connexion.html.
+      currentDriver = await requireAuth();
+
+      document.getElementById('loadingOverlay').style.display = 'none';
+
+      // Fill profile nav
+      document.getElementById('driverName').textContent = `${currentDriver.prenom} ${currentDriver.nom}`;
+      document.getElementById('driverAvatar').textContent = currentDriver.prenom[0] + currentDriver.nom[0];
+      document.getElementById('fullName').textContent = `${currentDriver.prenom} ${currentDriver.nom}`;
+      document.getElementById('driverType').innerHTML = `<i class="fas fa-truck"></i> ${currentDriver.typeCamion} – ${currentDriver.capacite}T`;
+      document.getElementById('metaTel').innerHTML = `<i class="fas fa-phone"></i> ${currentDriver.tel}`;
+      document.getElementById('metaWilaya').innerHTML = `<i class="fas fa-map-marker-alt"></i> ${currentDriver.wilaya}`;
+      document.getElementById('metaEmail').innerHTML = `<i class="fas fa-envelope"></i> ${currentDriver.email}`;
+
+      // Fill profile detail
+      document.getElementById('pPrenom').textContent  = currentDriver.prenom;
+      document.getElementById('pNom').textContent     = currentDriver.nom;
+      document.getElementById('pTel').textContent     = currentDriver.tel;
+      document.getElementById('pEmail').textContent   = currentDriver.email;
+      document.getElementById('pWilaya').textContent  = currentDriver.wilaya;
+      document.getElementById('pPermis').textContent  = currentDriver.permis;
+      document.getElementById('pMarque').textContent  = currentDriver.marque;
+      document.getElementById('pModele').textContent  = currentDriver.modele || '–';
+      document.getElementById('pType').textContent    = currentDriver.typeCamion;
+      document.getElementById('pCapacite').textContent= currentDriver.capacite + ' tonnes';
+      document.getElementById('pImmat').textContent   = currentDriver.immatriculation;
+      document.getElementById('pAnnee').textContent   = currentDriver.annee || '–';
+
+      refreshStats();
+      showTab('pending');
+    }
+
+    async function refreshStats() {
+      const stats = await getRequestsStats();
+      document.getElementById('statTotal').textContent    = stats.total;
+      document.getElementById('statAccepted').textContent = stats.accepted;
+      document.getElementById('statRejected').textContent = stats.rejected;
+      document.getElementById('statPending').textContent  = stats.pending;
+    }
+
+    function showTab(tab) {
+      currentTab = tab;
+      ['pending','accepted','rejected','profil'].forEach(t => {
+        const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+        if (el) el.classList.toggle('active', t === tab);
+      });
+
+      const listEl   = document.getElementById('requestsList');
+      const profilEl = document.getElementById('profilSection');
+
+      // On arrête toujours l'écoute Firestore précédente avant de changer de vue,
+      // pour éviter d'accumuler plusieurs listeners actifs en même temps.
+      if (unsubscribeCurrentListener) {
+        unsubscribeCurrentListener();
+        unsubscribeCurrentListener = null;
+      }
+
+      if (tab === 'profil') {
+        listEl.style.display   = 'none';
+        profilEl.style.display = 'block';
+        return;
+      }
+      listEl.style.display   = 'block';
+      profilEl.style.display = 'none';
+
+      listEl.innerHTML = `<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Chargement...</p></div>`;
+
+      // Écoute en temps réel : toute nouvelle demande ou tout changement de statut
+      // (même fait par un autre chauffeur connecté ailleurs) met à jour la liste automatiquement.
+      unsubscribeCurrentListener = listenRequestsByStatus(tab, (reqs) => {
+        renderRequests(reqs, tab);
+        refreshStats();
+      });
+    }
+
+    function renderRequests(reqs, tab) {
+      const el = document.getElementById('requestsList');
+      if (reqs.length === 0) {
+        const labels = { pending:'en attente', accepted:'acceptées', rejected:'refusées' };
+        el.innerHTML = `
+          <div class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <p>Aucune demande ${labels[tab] || ''} pour le moment.</p>
+          </div>`;
+        return;
+      }
+
+      el.innerHTML = reqs.map(req => `
+        <div class="request-card" id="req-${req.id}">
+          <div class="req-icon"><i class="fas fa-boxes"></i></div>
+          <div class="req-info">
+            <h4>${req.client}</h4>
+            <p><i class="fas fa-phone"></i> ${req.tel} &nbsp;|&nbsp; <i class="fas fa-calendar"></i> ${formatDate(req.date)}</p>
+            <div class="req-route">
+              <i class="fas fa-map-marker-alt" style="color:var(--blue-500);"></i> ${req.depart}
+              <i class="fas fa-long-arrow-alt-right"></i>
+              <i class="fas fa-map-marker-alt" style="color:#EF4444;"></i> ${req.arrivee}
+            </div>
+            <p style="font-size:.82rem;color:var(--gray-400);margin-top:4px;">
+              ${req.typeMarchandise}${req.poids ? ' · ' + req.poids + ' T' : ''}${req.typeCamion ? ' · ' + req.typeCamion : ''}
+            </p>
+            ${req.description ? `<p style="font-size:.82rem;color:var(--gray-600);margin-top:6px;font-style:italic;">"${req.description}"</p>` : ''}
+            <p style="font-size:.75rem;color:var(--gray-400);margin-top:8px;">Réf: ${req.id}</p>
+          </div>
+          <div class="req-actions">
+            ${tab === 'pending' ? `
+              <button class="btn-accept" onclick="updateRequest('${req.id}','accepted')">
+                <i class="fas fa-check"></i> Accepter
+              </button>
+              <button class="btn-reject" onclick="updateRequest('${req.id}','rejected')">
+                <i class="fas fa-times"></i> Refuser
+              </button>` : `
+              <span class="status-badge status-${tab}">
+                ${tab === 'accepted' ? '<i class="fas fa-check"></i> Acceptée' : '<i class="fas fa-times"></i> Refusée'}
+              </span>`
+            }
+          </div>
+        </div>`).join('');
+    }
+
+    async function updateRequest(id, status) {
+      try {
+        await updateRequestStatus(id, status, {
+          id: currentDriver.id,
+          name: `${currentDriver.prenom} ${currentDriver.nom}`
+        });
+        const msg = status === 'accepted' ? 'Demande acceptée !' : 'Demande refusée.';
+        showToast(msg, status === 'accepted' ? 'success' : 'error');
+        // Pas besoin de rafraîchir manuellement la liste : le listener en temps réel
+        // (onSnapshot) va automatiquement retirer cette demande de l'onglet "En attente".
+      } catch (error) {
+        console.error(error);
+        showToast('Une erreur est survenue. Veuillez réessayer.', 'error');
+      }
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '–';
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('fr-DZ', { day:'2-digit', month:'long', year:'numeric' });
+    }
+
+    async function seDeconnecter() {
+      if (unsubscribeCurrentListener) unsubscribeCurrentListener();
+      await seDeconnecterFirebase();
+      showToast('Déconnexion réussie.', 'success');
+      setTimeout(() => { window.location.href = 'connexion.html'; }, 800);
+    }
+
+    init();
+  </script>
+</body>
+</html>
